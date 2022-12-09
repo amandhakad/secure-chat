@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>p2p</title>
+	</head>
+	<body>
+
+		<p>My pid: <span class="pid_show"></span></p>
+		<p>Available peers: <br/><span class="all_peers"></span></p>
+		<script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
+		<script src="https://code.jquery.com/jquery-3.6.1.slim.min.js" integrity="sha256-w8CvhFs7iHNVUtnSP0YKEg00p9Ih13rlL9zGqvLdePA=" crossorigin="anonymous"></script>
+		<script type="text/javascript">
+			var lpeer = new Peer("teslatesla");
+
+			lpeer.on('open', function(id) {
+				console.log("lobby id", id);
+				var connArr = {};
+				lpeer.on('connection', function(lconn) {
+
+					lconn.on('data', function(data) {
+						console.log("Lobby received this", data);
+
+						if(data["type"]==="new_peer") {
+							connArr[lconn.peer] = { connectionRef: lconn, updatedAt: (new Date()).getTime()};
+							// console.log("conArr init", connArr);
+						}
+
+						if(data["type"]==="ALIVE") {
+							connArr[lconn.peer] = { connectionRef: lconn, updatedAt: (new Date()).getTime()};
+							// console.log("conArr update", connArr);
+						}
+
+						lconn.send({type: "PLIST", data: Object.keys(connArr)});
+					});
+
+					lconn.on("close", function() {
+						console.log("closed");
+					});
+
+					expire(connArr);
+
+				});
+			});
+
+			// lpeer.on('error', function(err) {
+			// 	console.log("err", err);
+			// });
+
+			// we connect now
+			var peer = new Peer();
+			peer.on('open', function(id) {
+				$(".pid_show").html(id);
+				var iduser = id;
+				var conn = peer.connect("teslatesla");
+
+				conn.on('open', function() {
+					console.log("conn", conn);
+
+					conn.on('data', function(data) {
+					 	if(data["type"]==="PLIST") {
+					 		$(".all_peers").html((data["data"]).join("<br/>"));
+					 	}
+					});
+
+					conn.send({type: "new_peer"});
+
+					remindAlive(conn);
+
+				});
+			});
+
+			function remindAlive(conn) {
+				conn.send({type: "ALIVE"});
+				window.setTimeout(() => remindAlive(conn), 2000);
+			}
+
+			function expire(connArr) {
+				for(let i in connArr) {
+					if((new Date()).getTime() - connArr[i]["updatedAt"] > 5000) {
+						connArr[i]["connectionRef"].send("must close");
+						connArr[i]["connectionRef"].close();
+						delete connArr[i];
+					}
+				}
+				window.setTimeout(() => expire(connArr), 2000);
+			}
+	
+		</script>
+	</body>
+</html>
