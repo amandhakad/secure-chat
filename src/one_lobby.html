@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>p2p</title>
+	</head>
+	<body>
+
+		<p>My pid: <span id="pid_show"></span></p>
+		<p>Available peers: <br/><span id="all_peers"></span></p>
+		<script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
+		<script src="https://code.jquery.com/jquery-3.6.1.slim.min.js" integrity="sha256-w8CvhFs7iHNVUtnSP0YKEg00p9Ih13rlL9zGqvLdePA=" crossorigin="anonymous"></script>
+
+		<script src="core.js"></script>
+		<script type="text/javascript">
+
+			var callbackPeerInit = (id) => {
+				document.getElementById("pid_show").innerHTML = (id);
+			}
+
+			var callbackPeerListUpdate = (list) => {
+				document.getElementById("all_peers").innerHTML = (list.join("<br/>"));
+			}
+
+			var masterLobbyKey = "teslatesla1";
+			buildLobby(masterLobbyKey);
+			buildPeer(masterLobbyKey, callbackPeerInit, callbackPeerListUpdate);
+
+		</script>
+	</body>
+</html>
