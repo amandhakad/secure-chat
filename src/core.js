@@ -37,7 +37,6 @@ function buildPeer(lobbyKey, callbackPeerInit, callbackPeerListUpdate) {
 	var peer = new Peer();
 	peer.on('open', function(id) {
 		callbackPeerInit(id);
-		// document.getElementById("pid_show").innerHTML = (id);
 		connectPeerToLobby(peer, lobbyKey, callbackPeerListUpdate);
 	});
 }
@@ -50,7 +49,6 @@ function connectPeerToLobby(peer, lobbyKey, callbackPeerListUpdate) {
 
 		conn.on('data', function(data) {
 		 	if(data["type"]==="PLIST") {
-		 		// document.getElementById("all_peers").innerHTML = ((data["data"]).join("<br/>"));
 		 		callbackPeerListUpdate(data["data"]);
 		 	}
 		});
