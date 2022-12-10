@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>p2p</title>
+	</head>
+	<body>
+
+		<p>My pid: <span id="pid_show"></span></p>
+		<p>Available peers: <br/><span id="all_peers"></span></p>
+
+		<div>
+			<h3>Connected to: <span id="connected_to"></span></h3>
+			<p>Messages:</p>
+			<ul id="lobbyMessages">
+				
+			</ul>
+			<form id="msgForm" method="post">
+				<input type="text" name="msg"/>
+				<input type="submit" name="submit">
+			</form>
+			
+		</div>
+		
+		<script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
+
+		<script src="core.js"></script>
+		<script type="text/javascript">
+			var connectBtn = (id) => { return '<button style="margin-left: 20px;" onclick="connectToPeer(\''+id.trim()+'\')">Connect</button>' };
+
+			buildPeerList = (list) => {
+				if(list.length===1) {
+					return "<li>"+list[0]+connectBtn(list[0])+"</li>";
+				}
+				let ret = "";
+				for(let i=0;i<list.length;i++) {
+					ret+= "<li>"+(list[i]+connectBtn(list[i]))+"</li>";
+				}
+				return ret;
+			}
+		</script>
+		<script type="text/javascript">
+			var p2pConnection;
+
+			var callbackPeerInit = (id) => {
+				document.getElementById("pid_show").innerHTML = (id);
+			}
+
+			var callbackPeerListUpdate = (list) => {
+				document.getElementById("all_peers").innerHTML = buildPeerList(list);
+			}
+
+			var handleP2PMessage = (message) => {
+				// console.log("got here", messages);
+				document.getElementById("lobbyMessages").innerHTML += (message["from"] + ": " + message["msg"]+"<br/>");
+			}
+
+			var updateConnectionText = (connectedTo) => {
+				document.getElementById("connected_to").innerHTML = connectedTo.peer;
+			}
+
+			var receiveP2PConn = (receivedP2PConn) => {
+				console.log("receivedP2PConn", receivedP2PConn);
+				if(p2pConnection) {
+					console.log("already connected they are!");
+					return;
+				}
+				if(!p2pConnection) {
+					p2pConnection = receivedP2PConn;
+				}
+				updateConnectionText(receivedP2PConn);
+			}
+
+			var peer;
+			var resolvePeer = (newpeer) => {
+				peer = newpeer;
+				callbackPeerInit(newpeer.id);
+			}
+
+			var masterLobbyKey = "teslatesla1";
+			buildLobby(masterLobbyKey);
+			buildPeer(masterLobbyKey, resolvePeer, callbackPeerListUpdate, receiveP2PConn, handleP2PMessage);
+
+			var connectToPeer = (target) => {
+				if(p2pConnection) {
+					p2pConnection.close();
+					p2pConnection = null;
+				}
+				buildP2P(peer, target, handleP2PMessage, receiveP2PConn);
+			}
+
+		</script>
+		<script type="text/javascript">
+			var msgSubmit = function(event) {
+				event.preventDefault();
+				var msgValue = event.target[0].value;
+				if(!msgValue || !p2pConnection) {
+					return true;
+				}
+				p2pConnection.send({ type: "p2pmessage", data: msgValue});
+				handleP2PMessage({from: "You", msg: msgValue});
+				event.target[0].value = "";
+			};
+
+			// your form
+			var form = document.getElementById("msgForm");
+
+			form.addEventListener("submit", msgSubmit, true);
+		</script>
+	</body>
+</html>

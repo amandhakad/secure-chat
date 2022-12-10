@@ -23,6 +23,16 @@ function buildLobby(lobbyKey) {
 
 				lconn.send({type: "LOBBY_DATA", data: Object.keys(connArr)});
 
+				// catch peer message and send to all peer
+				if(data["type"]==="p2lmessage") {
+					// console.log("Lobby received this", data["data"]);
+					//send to all
+					for(let con of Object.values(connArr)) {
+						console.log("trying con", con["connectionRef"]);
+						con["connectionRef"].send({ type: "l2pmessage", data: data["data"]})
+					}
+				}
+
 			});
 
 			lconn.on("close", function() {
@@ -35,40 +45,17 @@ function buildLobby(lobbyKey) {
 	});
 }
 
-function buildPeer(lobbyKey, resolvePeer, callbackPeerListUpdate, receiveP2PConn, handleP2PMessage) {
+function buildPeer(lobbyKey, resolve, callbackPeerInit, callbackPeerListUpdate, callbackMessageReceived) {
 	var peer = new Peer();
-
 	peer.on('open', function(id) {
-		resolvePeer(peer);
-		connectPeerToLobby(peer, lobbyKey, callbackPeerListUpdate);
-
-		peer.on('connection', function(p2pConnection) {
-			// peer.disconnect();
-			// console.log("look this is 2");
-			receiveP2PConn(p2pConnection);
-			p2pConnection.on('data', function(data) {
-				console.log("p2p received this", data);
-
-				if(data["type"]==="p2pmessage") {
-					handleP2PMessage({from: "Peer", msg: data["data"]})
-				}
-
-				if(data["type"]==="ALIVE") {
-					// connArr[lconn.peer] = { connectionRef: lconn, updatedAt: (new Date()).getTime()};
-					// console.log("conArr update", connArr);
-				}
-
-				// lconn.send({type: "LOBBY_DATA", data: Object.keys(connArr)});
-
-			})
-		});
+		callbackPeerInit(id);
+		connectPeerToLobby(peer, lobbyKey, callbackPeerListUpdate, callbackMessageReceived, resolve);
 	});
 }
 
-function connectPeerToLobby(peer, lobbyKey, callbackPeerListUpdate) {
+function connectPeerToLobby(peer, lobbyKey, callbackPeerListUpdate, callbackMessageReceived, resolve) {
 
 	var conn = peer.connect(lobbyKey);
-
 	conn.on('open', function() {
 		console.log("conn", conn);
 
@@ -76,11 +63,15 @@ function connectPeerToLobby(peer, lobbyKey, callbackPeerListUpdate) {
 		 	if(data["type"]==="LOBBY_DATA") {
 		 		callbackPeerListUpdate(data["data"]);
 		 	}
+		 	if(data["type"]==="l2pmessage") {
+		 		callbackMessageReceived(data["data"]);
+		 	}
 		});
 
 		conn.send({type: "new_peer"});
 		remindAlive(conn);
 
+		resolve(conn);
 	});
 
 }
@@ -99,25 +90,4 @@ function expire(connArr) {
 		}
 	}
 	window.setTimeout(() => expire(connArr), 2000);
-}
-
-function buildP2P(peer, target, handleP2PMessage, receiveP2PConnectionObject) {
-	console.log("peer target", target);
-	if(peer.disconnected) {
-		peer.reconnect();
-	}
-
-	var p2pConn = peer.connect(target);
-
-	p2pConn.on('open', function() {
-
-		p2pConn.on('data', function(data) {
-		 	if(data["type"]==="p2pmessage") {
-		 		handleP2PMessage({from: "Peer", msg: data["data"] });
-		 	}
-		});
-
-		// remindAlive(conn);
-		receiveP2PConnectionObject(p2pConn);
-	});
 }
