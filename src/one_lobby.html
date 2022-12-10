@@ -8,6 +8,18 @@
 
 		<p>My pid: <span id="pid_show"></span></p>
 		<p>Available peers: <br/><span id="all_peers"></span></p>
+
+		<div><p>Messages:</p>
+			<ul id="lobbyMessages">
+				
+			</ul>
+			<form id="msgForm" method="post">
+				<input type="text" name="msg"/>
+				<input type="submit" name="submit">
+			</form>
+			
+		</div>
+		
 		<script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
 
 		<script src="core.js"></script>
@@ -21,10 +33,37 @@
 				document.getElementById("all_peers").innerHTML = (list.join("<br/>"));
 			}
 
+			var callbackMessageReceived = (message) => {
+				// console.log("got here", messages);
+				document.getElementById("lobbyMessages").innerHTML += (message+"<br/>");
+			}
+
 			var masterLobbyKey = "teslatesla1";
 			buildLobby(masterLobbyKey);
-			buildPeer(masterLobbyKey, callbackPeerInit, callbackPeerListUpdate);
 
+			let peerPromise = new Promise(function(resolve, reject) {
+				buildPeer(masterLobbyKey, resolve, callbackPeerInit, callbackPeerListUpdate, callbackMessageReceived);
+			});
+
+			var connection;
+			peerPromise.then(function (value) { connection = value; }, function (error) { console.log("vverrorvv", error)} );
+
+		</script>
+		<script type="text/javascript">
+			var msgSubmit = function(event) {
+				event.preventDefault();
+				var msgValue = event.target[0].value;
+				if(!msgValue || !connection) {
+					return true;
+				}
+				connection.send({ type: "p2lmessage", data: msgValue});
+				event.target[0].value = "";
+			};
+
+			// your form
+			var form = document.getElementById("msgForm");
+
+			form.addEventListener("submit", msgSubmit, true);
 		</script>
 	</body>
 </html>
