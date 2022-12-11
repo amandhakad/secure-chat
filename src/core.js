@@ -35,7 +35,7 @@ function buildLobby(lobbyKey) {
 	});
 }
 
-function buildPeer(lobbyKey, resolvePeer, callbackPeerListUpdate, receiveP2PConn, handleP2PMessage) {
+function buildPeer(lobbyKey, resolvePeer, callbackPeerListUpdate, receiveP2PConn, handleP2PMessage, receiveDisconnection) {
 	var peer = new Peer();
 
 	peer.on('open', function(id) {
@@ -44,7 +44,9 @@ function buildPeer(lobbyKey, resolvePeer, callbackPeerListUpdate, receiveP2PConn
 
 		peer.on('connection', function(p2pConnection) {
 			// peer.disconnect();
-			// console.log("look this is 2");
+			
+			var p2pConnData = { conn: p2pConnection, lastUpdated: (new Date()).getTime()};
+
 			receiveP2PConn(p2pConnection);
 			p2pConnection.on('data', function(data) {
 				console.log("p2p received this", data);
@@ -54,13 +56,15 @@ function buildPeer(lobbyKey, resolvePeer, callbackPeerListUpdate, receiveP2PConn
 				}
 
 				if(data["type"]==="ALIVE") {
-					// connArr[lconn.peer] = { connectionRef: lconn, updatedAt: (new Date()).getTime()};
-					// console.log("conArr update", connArr);
+					p2pConnData["lastUpdated"] = (new Date()).getTime();
 				}
 
 				// lconn.send({type: "LOBBY_DATA", data: Object.keys(connArr)});
 
-			})
+			});
+
+			expireConnection(p2pConnData, receiveDisconnection);
+			remindAlive(p2pConnection)
 		});
 	});
 }
@@ -101,7 +105,19 @@ function expire(connArr) {
 	window.setTimeout(() => expire(connArr), 2000);
 }
 
-function buildP2P(peer, target, handleP2PMessage, receiveP2PConnectionObject) {
+function expireConnection(connData, onExpiry) {
+	// console.log("lastUpdated expiry", connData);
+	if((new Date()).getTime() - connData["lastUpdated"] > 5000) {
+		// connArr[i]["connectionRef"].send("must close");
+		connData["conn"].close();
+		onExpiry();
+		delete connData;
+		return;
+	}
+	window.setTimeout(() => expireConnection(connData, onExpiry), 2000);
+}
+
+function buildP2P(peer, target, handleP2PMessage, receiveP2PConnectionObject, receiveDisconnection) {
 	console.log("peer target", target);
 	if(peer.disconnected) {
 		peer.reconnect();
@@ -111,13 +127,21 @@ function buildP2P(peer, target, handleP2PMessage, receiveP2PConnectionObject) {
 
 	p2pConn.on('open', function() {
 
+		var connData = { conn: p2pConn, lastUpdated: (new Date()).getTime()};
+
 		p2pConn.on('data', function(data) {
+
+			if(data["type"]==="ALIVE") {
+				console.log("sourcer made this");
+				connData["lastUpdated"] = (new Date()).getTime();
+			}
 		 	if(data["type"]==="p2pmessage") {
 		 		handleP2PMessage({from: "Peer", msg: data["data"] });
 		 	}
 		});
 
-		// remindAlive(conn);
+		expireConnection(connData, receiveDisconnection);
+		remindAlive(p2pConn);
 		receiveP2PConnectionObject(p2pConn);
 	});
 }

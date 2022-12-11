@@ -55,8 +55,16 @@
 				document.getElementById("lobbyMessages").innerHTML += (message["from"] + ": " + message["msg"]+"<br/>");
 			}
 
+			var resetP2PMessage = () => {
+				document.getElementById("lobbyMessages").innerHTML = "";
+			}
+
 			var updateConnectionText = (connectedTo) => {
 				document.getElementById("connected_to").innerHTML = connectedTo.peer;
+			}
+
+			var removeConnectionText = () => {
+				document.getElementById("connected_to").innerHTML = "Disconnected";
 			}
 
 			var receiveP2PConn = (receivedP2PConn) => {
@@ -69,6 +77,11 @@
 					p2pConnection = receivedP2PConn;
 				}
 				updateConnectionText(receivedP2PConn);
+				resetP2PMessage();
+			}
+
+			var receiveDisconnection = () => {
+				removeConnectionText();
 			}
 
 			var peer;
@@ -79,14 +92,14 @@
 
 			var masterLobbyKey = "teslatesla1";
 			buildLobby(masterLobbyKey);
-			buildPeer(masterLobbyKey, resolvePeer, callbackPeerListUpdate, receiveP2PConn, handleP2PMessage);
+			buildPeer(masterLobbyKey, resolvePeer, callbackPeerListUpdate, receiveP2PConn, handleP2PMessage, receiveDisconnection);
 
 			var connectToPeer = (target) => {
 				if(p2pConnection) {
 					p2pConnection.close();
 					p2pConnection = null;
 				}
-				buildP2P(peer, target, handleP2PMessage, receiveP2PConn);
+				buildP2P(peer, target, handleP2PMessage, receiveP2PConn, receiveDisconnection);
 			}
 
 		</script>
